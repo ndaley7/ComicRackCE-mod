@@ -406,6 +406,12 @@ namespace cYo.Projects.ComicRack.Viewer
 
 		private bool quickListDirty;
 
+		private SplitContainer readerPagesSplitContainer;
+
+		private PagesView readerPagesView;
+
+		private ToolStripMenuItem miReaderPagesPane;
+
 		private FormWindowState oldState = FormWindowState.Normal;
 
 		[DefaultValue(null)]
@@ -462,6 +468,133 @@ namespace cYo.Projects.ComicRack.Viewer
 			private set;
 		}
 
+		private void InitializeReaderPagesPaneMenu()
+		{
+			miReaderPagesPane = new ToolStripMenuItem
+			{
+				Image = Resources.ComicPage,
+				Name = "miReaderPagesPane",
+				Size = miViewPages.Size,
+				Text = "Reader Pages Pane"
+			};
+			int index = browseMenu.DropDownItems.IndexOf(miViewPages);
+			browseMenu.DropDownItems.Insert(index + 1, miReaderPagesPane);
+		}
+
+		private void InitializeReaderPagesPane(ComicDisplayControl pageDisplay)
+		{
+			readerPagesView = new PagesView
+			{
+				CreateBackdrop = false,
+				Dock = DockStyle.Fill,
+				Name = "readerPagesView"
+			};
+			readerPagesView.ItemView.ItemActivate += ReaderPagesView_ItemActivate;
+			readerPagesView.ItemView.SelectedIndexChanged += ReaderPagesView_SelectedIndexChanged;
+
+			readerPagesSplitContainer = new SplitContainer
+			{
+				Dock = DockStyle.Fill,
+				FixedPanel = FixedPanel.Panel1,
+				Name = "readerPagesSplitContainer",
+				SplitterWidth = FormUtility.ScaleDpiX(5),
+				TabIndex = 0
+			};
+			readerPagesSplitContainer.Size = readerContainer.ClientSize;
+			readerPagesSplitContainer.Panel1MinSize = FormUtility.ScaleDpiX(160);
+			readerPagesSplitContainer.Panel2MinSize = FormUtility.ScaleDpiX(200);
+			readerPagesSplitContainer.Panel1.Controls.Add(readerPagesView);
+			readerPagesSplitContainer.Panel2.Controls.Add(pageDisplay);
+			readerPagesSplitContainer.SplitterMoved += ReaderPagesSplitContainer_SplitterMoved;
+			readerContainer.Controls.Add(readerPagesSplitContainer);
+			readerContainer.Controls.SetChildIndex(readerPagesSplitContainer, 0);
+			readerContainer.Controls.SetChildIndex(quickOpenView, 0);
+			readerPagesSplitContainer.Panel1Collapsed = !Program.Settings.ReaderPagesPaneVisible;
+			SetReaderPagesPaneWidth(Program.Settings.ReaderPagesPaneWidth);
+		}
+
+		private void ToggleReaderPagesPane()
+		{
+			SetReaderPagesPaneVisible(!Program.Settings.ReaderPagesPaneVisible);
+		}
+
+		private void SetReaderPagesPaneVisible(bool visible)
+		{
+			if (readerPagesSplitContainer == null)
+			{
+				Program.Settings.ReaderPagesPaneVisible = visible;
+				return;
+			}
+			if (!visible)
+			{
+				StoreReaderPagesPaneSettings();
+				readerPagesSplitContainer.Panel1Collapsed = true;
+				Program.Settings.ReaderPagesPaneVisible = false;
+				UpdateReaderPagesPaneBook();
+				return;
+			}
+			readerPagesSplitContainer.Panel1Collapsed = false;
+			SetReaderPagesPaneWidth(Program.Settings.ReaderPagesPaneWidth);
+			Program.Settings.ReaderPagesPaneVisible = true;
+			UpdateReaderPagesPaneBook();
+		}
+
+		private void SetReaderPagesPaneWidth(int width)
+		{
+			if (readerPagesSplitContainer == null || readerPagesSplitContainer.Panel1Collapsed)
+			{
+				return;
+			}
+			int defaultWidth = FormUtility.ScaleDpiX(340);
+			int distance = width == 340 ? defaultWidth : width;
+			int maxDistance = readerPagesSplitContainer.Width - readerPagesSplitContainer.Panel2MinSize - readerPagesSplitContainer.SplitterWidth;
+			if (maxDistance >= readerPagesSplitContainer.Panel1MinSize)
+			{
+				readerPagesSplitContainer.SplitterDistance = distance.Clamp(readerPagesSplitContainer.Panel1MinSize, maxDistance);
+			}
+		}
+
+		private void StoreReaderPagesPaneSettings()
+		{
+			if (readerPagesSplitContainer != null && !readerPagesSplitContainer.Panel1Collapsed)
+			{
+				Program.Settings.ReaderPagesPaneWidth = readerPagesSplitContainer.SplitterDistance;
+			}
+		}
+
+		private void UpdateReaderPagesPaneBook()
+		{
+			if (readerPagesView != null && comicDisplay != null)
+			{
+				readerPagesView.PageFilter = ComicPageType.All;
+				readerPagesView.Book = Program.Settings.ReaderPagesPaneVisible ? comicDisplay.Book : null;
+			}
+		}
+
+		private void ReaderPagesSplitContainer_SplitterMoved(object sender, SplitterEventArgs e)
+		{
+			StoreReaderPagesPaneSettings();
+		}
+
+		private void ReaderPagesView_SelectedIndexChanged(object sender, EventArgs e)
+		{
+			NavigateReaderPagesPaneToFocusedPage();
+		}
+
+		private void ReaderPagesView_ItemActivate(object sender, EventArgs e)
+		{
+			NavigateReaderPagesPaneToFocusedPage();
+		}
+
+		private void NavigateReaderPagesPaneToFocusedPage()
+		{
+			PageViewItem pageViewItem = readerPagesView?.ItemView.FocusedItem as PageViewItem;
+			if (pageViewItem != null && readerPagesView.Book != null && readerPagesView.Book.CurrentPage != pageViewItem.Page)
+			{
+				readerPagesView.Book.Navigate(pageViewItem.Page, PageSeekOrigin.Absolute);
+				ComicDisplay.Focus();
+			}
+		}
 		public bool ReaderUndocked
 		{
 			get
@@ -731,6 +864,7 @@ namespace cYo.Projects.ComicRack.Viewer
 		{
 			LocalizeUtility.UpdateRightToLeft(this);
 			InitializeComponent();
+			InitializeReaderPagesPaneMenu();
 			base.Size = base.Size.ScaleDpi();
 			statusStrip.Height = (int)tsText.Font.GetHeight() + FormUtility.ScaleDpiY(8);
 			SystemEvents.DisplaySettingsChanging += delegate
@@ -755,6 +889,7 @@ namespace cYo.Projects.ComicRack.Viewer
 			ComicDisplay.LastPageReached += viewer_LastPageReached;
 			ComicDisplay.FullScreenChanged += ViewerFullScreenChanged;
 			ComicDisplay.PageChanged += ComicDisplay_PageChanged;
+			UpdateReaderPagesPaneBook();
 			books = new NavigatorManager(ComicDisplay);
 			books.BookOpened += OnBookOpened;
 			books.BookClosed += OnBookClosed;
@@ -1134,6 +1269,7 @@ namespace cYo.Projects.ComicRack.Viewer
 			Program.Settings.AutoMagnifier = ComicDisplay.AutoMagnifier;
 			Program.Settings.ThumbCacheEnabled = Program.ImagePool.Thumbs.DiskCache.Enabled;
 			Program.Settings.PageFilter = ComicDisplay.PageFilter;
+			StoreReaderPagesPaneSettings();
 			Program.Settings.ReaderKeyboardMapping.Clear();
 			Program.Settings.ReaderKeyboardMapping.AddRange(ComicDisplay.KeyboardMap.GetKeyMapping());
 			Program.NetworkManager.BroadcastStop();
@@ -1338,6 +1474,7 @@ namespace cYo.Projects.ComicRack.Viewer
 			commands.Add(ComicDisplay.CopyPageToClipboard, () => ComicDisplay.Book != null, miCopyPage, cmCopyPage);
 			commands.Add(ExportCurrentImage, () => ComicDisplay.Book != null, miExportPage, cmExportPage);
 			commands.Add(ToggleUndockReader, true, () => ReaderUndocked, miReaderUndocked, tbReaderUndocked);
+			commands.Add(ToggleReaderPagesPane, true, () => Program.Settings.ReaderPagesPaneVisible, miReaderPagesPane);
 			commands.Add(delegate
 			{
 				MinimalGui = !MinimalGui;
@@ -3422,6 +3559,7 @@ namespace cYo.Projects.ComicRack.Viewer
 
 		private void viewer_BookChanged(object sender, EventArgs e)
 		{
+			UpdateReaderPagesPaneBook();
 			if (!Program.ExtendedSettings.DoNotResetZoomOnBookOpen)
 			{
 				ComicDisplay.ImageZoom = 1f;
@@ -4394,9 +4532,7 @@ namespace cYo.Projects.ComicRack.Viewer
 			{
 				pageDisplay.SizeChanged += pageDisplay_SizeChanged;
 			}
-			readerContainer.Controls.Add(pageDisplay);
-			readerContainer.Controls.SetChildIndex(pageDisplay, 0);
-			readerContainer.Controls.SetChildIndex(quickOpenView, 0);
+			InitializeReaderPagesPane(pageDisplay);
 			ComicDisplay comicDisplay = new ComicDisplay(pageDisplay);
 			FormUtility.ServiceTranslation[pageDisplay] = comicDisplay;
 			return comicDisplay;

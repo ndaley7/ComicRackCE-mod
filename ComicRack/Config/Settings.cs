@@ -231,6 +231,10 @@ namespace cYo.Projects.ComicRack.Viewer.Config
 
 		private bool openInNewTab;
 
+		private bool readerPagesPaneVisible;
+
+		private int readerPagesPaneWidth = 340;
+
 		private bool hideCursorFullScreen = true;
 
 		private bool autoNavigateComics = true;
@@ -1280,6 +1284,35 @@ namespace cYo.Projects.ComicRack.Viewer.Config
 					openInNewTab = value;
 					FireEvent(this.OpenInNewTabChanged);
 				}
+			}
+		}
+
+		[Category("Reading")]
+		[Description("Show the Pages thumbnail pane beside the reader")]
+		[DefaultValue(false)]
+		public bool ReaderPagesPaneVisible
+		{
+			get
+			{
+				return readerPagesPaneVisible;
+			}
+			set
+			{
+				readerPagesPaneVisible = value;
+			}
+		}
+
+		[Browsable(false)]
+		[DefaultValue(340)]
+		public int ReaderPagesPaneWidth
+		{
+			get
+			{
+				return readerPagesPaneWidth;
+			}
+			set
+			{
+				readerPagesPaneWidth = value.Clamp(160, 1200);
 			}
 		}
 

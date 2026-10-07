@@ -348,6 +348,11 @@ namespace cYo.Projects.ComicRack.Viewer.Controls
 
         private void contextPages_Opening(object sender, CancelEventArgs e)
         {
+            if (book?.Comic == null)
+            {
+                e.Cancel = true;
+                return;
+            }
             miMergePages.Visible = false;
             miPageType.Visible = tsPageTypeSeparator.Visible = book.Comic.EditMode.CanEditPages();
             miSetBookmark.Visible = miRemoveBookmark.Visible = tsBookmarkSeparator.Visible = book.Comic.EditMode.CanEditPages();
