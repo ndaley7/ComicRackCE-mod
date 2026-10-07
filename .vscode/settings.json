@@ -1,0 +1,4 @@
+﻿{
+  "comicrack.msbuildPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe",
+  "comicrack.msbuildSdksPath": "C:\\Program Files\\dotnet\\sdk\\5.0.201\\Sdks"
+}

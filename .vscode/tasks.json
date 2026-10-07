@@ -1,0 +1,63 @@
+﻿{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build debug",
+      "type": "process",
+      "command": "${config:comicrack.msbuildPath}",
+      "args": [
+        "ComicRack\\ComicRack.csproj",
+        "/restore",
+        "/t:Rebuild",
+        "/p:Configuration=Debug",
+        "/p:Platform=AnyCPU"
+      ],
+      "options": {
+        "env": {
+          "MSBuildSDKsPath": "${config:comicrack.msbuildSdksPath}"
+        }
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build release",
+      "type": "process",
+      "command": "${config:comicrack.msbuildPath}",
+      "args": [
+        "ComicRack\\ComicRack.csproj",
+        "/restore",
+        "/t:Rebuild",
+        "/p:Configuration=Release",
+        "/p:Platform=AnyCPU"
+      ],
+      "options": {
+        "env": {
+          "MSBuildSDKsPath": "${config:comicrack.msbuildSdksPath}"
+        }
+      },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "clean debug",
+      "type": "process",
+      "command": "${config:comicrack.msbuildPath}",
+      "args": [
+        "ComicRack\\ComicRack.csproj",
+        "/t:Clean",
+        "/p:Configuration=Debug",
+        "/p:Platform=AnyCPU"
+      ],
+      "options": {
+        "env": {
+          "MSBuildSDKsPath": "${config:comicrack.msbuildSdksPath}"
+        }
+      },
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+﻿{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ComicRack Debug",
+      "type": "clr",
+      "request": "launch",
+      "preLaunchTask": "build debug",
+      "program": "${workspaceFolder}\\ComicRack\\bin\\Debug\\net48\\ComicRack.exe",
+      "cwd": "${workspaceFolder}\\ComicRack\\bin\\Debug\\net48",
+      "console": "internalConsole"
+    },
+    {
+      "name": "ComicRack Release",
+      "type": "clr",
+      "request": "launch",
+      "preLaunchTask": "build release",
+      "program": "${workspaceFolder}\\ComicRack\\bin\\Release\\net48\\ComicRack.exe",
+      "cwd": "${workspaceFolder}\\ComicRack\\bin\\Release\\net48",
+      "console": "internalConsole"
+    }
+  ]
+}
