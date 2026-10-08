@@ -410,6 +410,32 @@ namespace cYo.Projects.ComicRack.Viewer
 
 		private PagesView readerPagesView;
 
+		private Panel readerPagesTagsPanel;
+
+		private FlowLayoutPanel readerPagesTagsFlow;
+
+		private Panel readerPagesTagMatchesPanel;
+
+		private ListView readerPagesTagMatchesView;
+
+		private ToolTip readerPagesTagMatchesToolTip;
+
+		private ComicBook readerPagesTagMatchesToolTipBook;
+
+		private ListViewItem readerPagesTagMatchesToolTipItem;
+
+		private Label readerPagesTagMatchesTitle;
+
+		private bool readerPagesTagMatchesExpanded = true;
+
+		private readonly HashSet<string> readerPagesSelectedTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+		private TextBox readerPagesTagInput;
+
+		private Button readerPagesTagAddButton;
+
+		private ComicBook readerPagesTagsBook;
+
 		private ToolStripMenuItem miReaderPagesPane;
 
 		private FormWindowState oldState = FormWindowState.Normal;
@@ -503,7 +529,14 @@ namespace cYo.Projects.ComicRack.Viewer
 			readerPagesSplitContainer.Size = readerContainer.ClientSize;
 			readerPagesSplitContainer.Panel1MinSize = FormUtility.ScaleDpiX(160);
 			readerPagesSplitContainer.Panel2MinSize = FormUtility.ScaleDpiX(200);
-			readerPagesSplitContainer.Panel1.Controls.Add(readerPagesView);
+			Panel pagesPanel = new Panel
+			{
+				Dock = DockStyle.Fill
+			};
+			pagesPanel.SizeChanged += ReaderPagesPanel_SizeChanged;
+			pagesPanel.Controls.Add(readerPagesView);
+			pagesPanel.Controls.Add(CreateReaderPagesTagsPanel());
+			readerPagesSplitContainer.Panel1.Controls.Add(pagesPanel);
 			readerPagesSplitContainer.Panel2.Controls.Add(pageDisplay);
 			readerPagesSplitContainer.SplitterMoved += ReaderPagesSplitContainer_SplitterMoved;
 			readerContainer.Controls.Add(readerPagesSplitContainer);
@@ -511,6 +544,667 @@ namespace cYo.Projects.ComicRack.Viewer
 			readerContainer.Controls.SetChildIndex(quickOpenView, 0);
 			readerPagesSplitContainer.Panel1Collapsed = !Program.Settings.ReaderPagesPaneVisible;
 			SetReaderPagesPaneWidth(Program.Settings.ReaderPagesPaneWidth);
+		}
+
+		private Control CreateReaderPagesTagsPanel()
+		{
+			Panel panel = new Panel
+			{
+				BackColor = SystemColors.Window,
+				Dock = DockStyle.Top,
+				Height = FormUtility.ScaleDpiY(132),
+				Padding = new Padding(FormUtility.ScaleDpiX(8), FormUtility.ScaleDpiY(7), FormUtility.ScaleDpiX(8), FormUtility.ScaleDpiY(6))
+			};
+			readerPagesTagsPanel = panel;
+
+			Panel addPanel = new Panel
+			{
+				Dock = DockStyle.Bottom,
+				Height = 0,
+				Visible = false
+			};
+			readerPagesTagAddButton = new Button
+			{
+				Dock = DockStyle.Right,
+				Text = "Tag",
+				Width = FormUtility.ScaleDpiX(44)
+			};
+			readerPagesTagAddButton.Click += ReaderPagesTagAddButton_Click;
+			readerPagesTagInput = new TextBox
+			{
+				Dock = DockStyle.Fill
+			};
+			readerPagesTagInput.KeyDown += ReaderPagesTagInput_KeyDown;
+			readerPagesTagInput.Text = "Enter new tags, separated with comma";
+			readerPagesTagInput.ForeColor = SystemColors.GrayText;
+			readerPagesTagInput.GotFocus += ReaderPagesTagInput_GotFocus;
+			readerPagesTagInput.LostFocus += ReaderPagesTagInput_LostFocus;
+			addPanel.Controls.Add(readerPagesTagInput);
+			addPanel.Controls.Add(readerPagesTagAddButton);
+
+			readerPagesTagsFlow = new FlowLayoutPanel
+			{
+				AutoScroll = true,
+				BackColor = SystemColors.Window,
+				Dock = DockStyle.Fill,
+				WrapContents = true
+			};
+
+			panel.Controls.Add(readerPagesTagsFlow);
+			panel.Controls.Add(CreateReaderPagesTagMatchesPanel());
+			panel.Controls.Add(addPanel);
+			return panel;
+		}
+
+		private Control CreateReaderPagesTagMatchesPanel()
+		{
+			Panel panel = new Panel
+			{
+				BackColor = SystemColors.Window,
+				Dock = DockStyle.Bottom,
+				Height = FormUtility.ScaleDpiY(118),
+				Padding = new Padding(0, FormUtility.ScaleDpiY(3), 0, 0)
+			};
+			readerPagesTagMatchesPanel = panel;
+			readerPagesTagMatchesTitle = new Label
+			{
+				AutoEllipsis = true,
+				BackColor = SystemColors.Window,
+				Cursor = Cursors.Hand,
+				Dock = DockStyle.Top,
+				Font = FC.Get("Arial", 8f, FontStyle.Bold),
+				Height = FormUtility.ScaleDpiY(18),
+				Text = "[-] Matching comics",
+				TextAlign = ContentAlignment.MiddleLeft
+			};
+			readerPagesTagMatchesTitle.Click += ReaderPagesTagMatchesTitle_Click;
+			readerPagesTagMatchesView = new ListView
+			{
+				Activation = ItemActivation.OneClick,
+				BorderStyle = BorderStyle.FixedSingle,
+				Dock = DockStyle.Fill,
+				FullRowSelect = true,
+				HeaderStyle = ColumnHeaderStyle.None,
+				HideSelection = false,
+				MultiSelect = false,
+				View = View.Details
+			};
+			readerPagesTagMatchesView.Columns.Add(string.Empty, FormUtility.ScaleDpiX(220));
+			readerPagesTagMatchesView.DoubleClick += ReaderPagesTagMatchesView_Activate;
+			readerPagesTagMatchesView.ItemActivate += ReaderPagesTagMatchesView_Activate;
+			readerPagesTagMatchesView.ItemMouseHover += ReaderPagesTagMatchesView_ItemMouseHover;
+			readerPagesTagMatchesView.MouseLeave += ReaderPagesTagMatchesView_MouseLeave;
+			readerPagesTagMatchesView.MouseMove += ReaderPagesTagMatchesView_MouseMove;
+			readerPagesTagMatchesView.Resize += delegate
+			{
+				if (readerPagesTagMatchesView.Columns.Count != 0)
+				{
+					readerPagesTagMatchesView.Columns[0].Width = Math.Max(FormUtility.ScaleDpiX(80), readerPagesTagMatchesView.ClientSize.Width - FormUtility.ScaleDpiX(4));
+				}
+			};
+			readerPagesTagMatchesToolTip = new ToolTip(components)
+			{
+				AutoPopDelay = 15000,
+				InitialDelay = 350,
+				OwnerDraw = true,
+				ReshowDelay = 100,
+				UseAnimation = false,
+				UseFading = false
+			};
+			readerPagesTagMatchesToolTip.Popup += ReaderPagesTagMatchesToolTip_Popup;
+			readerPagesTagMatchesToolTip.Draw += ReaderPagesTagMatchesToolTip_Draw;
+
+			panel.Controls.Add(readerPagesTagMatchesView);
+			panel.Controls.Add(readerPagesTagMatchesTitle);
+			UpdateReaderTagMatchesPanelExpanded();
+			return panel;
+		}
+
+		private void ReaderPagesPanel_SizeChanged(object sender, EventArgs e)
+		{
+			UpdateReaderPagesTagsPanelHeight();
+		}
+
+		private void UpdateReaderPagesTagsPanelHeight()
+		{
+			if (readerPagesTagsPanel?.Parent == null)
+			{
+				return;
+			}
+			readerPagesTagsPanel.Height = Math.Max(FormUtility.ScaleDpiY(180), readerPagesTagsPanel.Parent.ClientSize.Height / 3);
+			UpdateReaderTagMatchesPanelExpanded();
+		}
+
+		private void ReaderPagesTagMatchesTitle_Click(object sender, EventArgs e)
+		{
+			readerPagesTagMatchesExpanded = !readerPagesTagMatchesExpanded;
+			UpdateReaderTagMatchesPanelExpanded();
+		}
+
+		private void UpdateReaderTagMatchesPanelExpanded()
+		{
+			if (readerPagesTagMatchesPanel == null || readerPagesTagMatchesTitle == null || readerPagesTagMatchesView == null)
+			{
+				return;
+			}
+			int titleHeight = FormUtility.ScaleDpiY(18);
+			int expandedHeight = Math.Max(FormUtility.ScaleDpiY(92), readerPagesTagsPanel != null ? readerPagesTagsPanel.Height / 3 : FormUtility.ScaleDpiY(92));
+			readerPagesTagMatchesPanel.Height = readerPagesTagMatchesExpanded ? expandedHeight : titleHeight + FormUtility.ScaleDpiY(3);
+			readerPagesTagMatchesView.Visible = readerPagesTagMatchesExpanded;
+			UpdateReaderTagMatchesTitle();
+		}
+
+		private void UpdateReaderTagMatchesTitle()
+		{
+			if (readerPagesTagMatchesTitle == null)
+			{
+				return;
+			}
+			string prefix = readerPagesTagMatchesExpanded ? "[-] " : "[+] ";
+			readerPagesTagMatchesTitle.Text = prefix + readerPagesTagMatchesTitle.Text.TrimStart('[', '+', '-', ']', ' ');
+		}
+
+		private void AttachReaderPagesTagsBook(ComicBook comic)
+		{
+			if (readerPagesTagsBook == comic)
+			{
+				return;
+			}
+			if (readerPagesTagsBook != null)
+			{
+				readerPagesTagsBook.BookChanged -= ReaderPagesTagsBook_BookChanged;
+			}
+			readerPagesTagsBook = comic;
+			if (readerPagesTagsBook != null)
+			{
+				readerPagesTagsBook.BookChanged += ReaderPagesTagsBook_BookChanged;
+			}
+		}
+
+		private void ReaderPagesTagsBook_BookChanged(object sender, BookChangedEventArgs e)
+		{
+			if (e.PropertyName == "Tags" || e.PropertyName == "Genre" || e.PropertyName == "Characters" || e.PropertyName == "Teams" || e.PropertyName == "Locations" || e.PropertyName == "CustomValuesStore")
+			{
+				this.InvokeIfRequired(UpdateReaderPagesTagPanel);
+			}
+		}
+
+		private void UpdateReaderPagesTagPanel()
+		{
+			if (readerPagesTagsPanel == null || readerPagesTagsFlow == null)
+			{
+				return;
+			}
+			UpdateReaderPagesTagsPanelHeight();
+			ComicBook comic = Program.Settings.ReaderPagesPaneVisible ? comicDisplay?.Book?.Comic : null;
+			AttachReaderPagesTagsBook(comic);
+			readerPagesTagsFlow.SuspendLayout();
+			readerPagesTagsFlow.Controls.Clear();
+			readerPagesTagInput.Enabled = readerPagesTagAddButton.Enabled = comic != null;
+			if (comic != null)
+			{
+				foreach (KeyValuePair<string, List<string>> group in GetReaderTagGroups(comic))
+				{
+					AddReaderTagGroupLabel(GetReaderTagDisplayGroup(group.Key) + ":");
+					foreach (string tag in group.Value)
+					{
+						AddReaderTagValueLabel(group.Key, tag);
+					}
+				}
+			}
+			if (readerPagesTagsFlow.Controls.Count == 0)
+			{
+				AddReaderTagMessageLabel(comic == null ? "Open a comic to show tags" : "No tags");
+			}
+			readerPagesTagsFlow.ResumeLayout();
+			UpdateReaderTagMatches();
+		}
+
+		private IEnumerable<KeyValuePair<string, List<string>>> GetReaderTagGroups(ComicBook comic)
+		{
+			Dictionary<string, List<string>> groups = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+			AddReaderTags(groups, "tag", comic.Tags);
+			AddReaderTags(groups, "genre", comic.Genre);
+			AddReaderTags(groups, "character", comic.Characters);
+			AddReaderTags(groups, "group", comic.Teams);
+			AddReaderTags(groups, "location", comic.Locations);
+			foreach (StringPair pair in comic.GetCustomValues())
+			{
+				if (pair.Key.IndexOf("tag", StringComparison.OrdinalIgnoreCase) >= 0)
+				{
+					AddReaderTags(groups, NormalizeReaderTagGroup(pair.Key), pair.Value);
+				}
+			}
+			return groups.Where(pair => pair.Value.Count != 0).OrderBy(pair => GetReaderTagGroupSort(pair.Key)).ThenBy(pair => GetReaderTagDisplayGroup(pair.Key));
+		}
+
+		private void AddReaderTags(Dictionary<string, List<string>> groups, string defaultGroup, string tags)
+		{
+			if (string.IsNullOrWhiteSpace(tags))
+			{
+				return;
+			}
+			foreach (string rawTag in tags.Split(new char[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))
+			{
+				string text = rawTag.Trim();
+				if (text.Length == 0)
+				{
+					continue;
+				}
+				string group = defaultGroup;
+				string value = text;
+				int separator = text.IndexOf(':');
+				if (separator <= 0 || separator >= text.Length - 1)
+				{
+					separator = GetReaderTagHyphenSeparator(text);
+				}
+				if (separator > 0 && separator < text.Length - 1)
+				{
+					group = text.Substring(0, separator).Trim();
+					value = text.Substring(separator + 1).Trim();
+				}
+				group = NormalizeReaderTagGroup(group);
+				if (!groups.TryGetValue(group, out List<string> values))
+				{
+					groups[group] = values = new List<string>();
+				}
+				if (!values.Contains(value, StringComparer.OrdinalIgnoreCase))
+				{
+					values.Add(value);
+				}
+			}
+		}
+
+		private int GetReaderTagHyphenSeparator(string text)
+		{
+			int separator = text.IndexOf('-');
+			if (separator <= 0 || separator >= text.Length - 1)
+			{
+				return -1;
+			}
+			string group = NormalizeReaderTagGroup(text.Substring(0, separator));
+			return IsReaderTagGroup(group) ? separator : -1;
+		}
+
+		private bool IsReaderTagGroup(string group)
+		{
+			switch ((group ?? string.Empty).ToLowerInvariant())
+			{
+			case "artist":
+			case "group":
+			case "parody":
+			case "character":
+			case "female":
+			case "male":
+			case "genre":
+			case "language":
+			case "tag":
+			case "misc":
+			case "location":
+				return true;
+			default:
+				return false;
+			}
+		}
+
+		private string NormalizeReaderTagGroup(string group)
+		{
+			switch ((group ?? string.Empty).Trim().ToLowerInvariant())
+			{
+			case "artists":
+				return "artist";
+			case "groups":
+			case "teams":
+				return "group";
+			case "parodies":
+				return "parody";
+			case "characters":
+				return "character";
+			case "genres":
+				return "genre";
+			case "languages":
+				return "language";
+			case "tag":
+			case "misc":
+				return "tag";
+			case "locations":
+				return "location";
+			default:
+				return (group ?? string.Empty).Trim().ToLowerInvariant();
+			}
+		}
+
+		private string GetReaderTagDisplayGroup(string group)
+		{
+			return NormalizeReaderTagGroup(group);
+		}
+
+		private int GetReaderTagGroupSort(string group)
+		{
+			switch (NormalizeReaderTagGroup(group))
+			{
+			case "artist":
+				return 0;
+			case "group":
+				return 1;
+			case "parody":
+				return 2;
+			case "character":
+				return 3;
+			case "female":
+				return 4;
+			case "male":
+				return 5;
+			case "genre":
+				return 6;
+			case "language":
+				return 7;
+			case "tag":
+				return 8;
+			default:
+				return 20;
+			}
+		}
+
+		private void AddReaderTagGroupLabel(string text)
+		{
+			Label label = new Label
+			{
+				AutoSize = true,
+				BackColor = SystemColors.Window,
+				Font = FC.Get("Arial", 8f, FontStyle.Bold),
+				ForeColor = SystemColors.WindowText,
+				Margin = new Padding(FormUtility.ScaleDpiX(2), FormUtility.ScaleDpiY(5), FormUtility.ScaleDpiX(4), FormUtility.ScaleDpiY(4)),
+				Padding = new Padding(0, 2, 0, 2),
+				Text = text
+			};
+			readerPagesTagsFlow.Controls.Add(label);
+		}
+
+		private void AddReaderTagValueLabel(string group, string text)
+		{
+			string key = MakeReaderTagKey(group, text);
+			Label label = new Label
+			{
+				AutoSize = true,
+				BackColor = GetReaderTagColor(group),
+				Cursor = Cursors.Hand,
+				Font = FC.Get("Arial", 8f, FontStyle.Regular),
+				ForeColor = SystemColors.WindowText,
+				Margin = new Padding(FormUtility.ScaleDpiX(3), FormUtility.ScaleDpiY(3), FormUtility.ScaleDpiX(8), FormUtility.ScaleDpiY(5)),
+				Padding = new Padding(FormUtility.ScaleDpiX(6), FormUtility.ScaleDpiY(2), FormUtility.ScaleDpiX(6), FormUtility.ScaleDpiY(2)),
+				Tag = key,
+				Text = text
+			};
+			label.Click += ReaderTagLabel_Click;
+			ApplyReaderTagSelectionStyle(label);
+			readerPagesTagsFlow.Controls.Add(label);
+		}
+
+		private void AddReaderTagMessageLabel(string text)
+		{
+			Label label = new Label
+			{
+				AutoSize = true,
+				BackColor = SystemColors.Window,
+				Font = FC.Get("Arial", 8f, FontStyle.Regular),
+				ForeColor = SystemColors.GrayText,
+				Margin = new Padding(FormUtility.ScaleDpiX(3), FormUtility.ScaleDpiY(4), 0, 0),
+				Text = text
+			};
+			readerPagesTagsFlow.Controls.Add(label);
+		}
+
+		private void ReaderTagLabel_Click(object sender, EventArgs e)
+		{
+			Label label = sender as Label;
+			string key = label?.Tag as string;
+			if (string.IsNullOrEmpty(key))
+			{
+				return;
+			}
+			if (!readerPagesSelectedTags.Remove(key))
+			{
+				readerPagesSelectedTags.Add(key);
+			}
+			foreach (Label tagLabel in readerPagesTagsFlow.Controls.OfType<Label>().Where(control => control.Tag is string))
+			{
+				ApplyReaderTagSelectionStyle(tagLabel);
+			}
+			UpdateReaderTagMatches();
+		}
+
+		private void ApplyReaderTagSelectionStyle(Label label)
+		{
+			string key = label.Tag as string;
+			bool selected = key != null && readerPagesSelectedTags.Contains(key);
+			label.BorderStyle = selected ? BorderStyle.FixedSingle : BorderStyle.None;
+		}
+
+		private Color GetReaderTagColor(string group)
+		{
+			switch ((group ?? string.Empty).ToLowerInvariant())
+			{
+			case "artist":
+				return Color.FromArgb(255, 246, 199);
+			case "group":
+			case "male":
+				return Color.FromArgb(222, 239, 255);
+			case "parody":
+			case "language":
+			case "tags":
+				return Color.FromArgb(232, 255, 236);
+			case "character":
+				return Color.FromArgb(248, 216, 255);
+			case "female":
+				return Color.FromArgb(255, 226, 237);
+			case "genre":
+				return Color.FromArgb(239, 247, 252);
+			default:
+				return Color.FromArgb(238, 238, 238);
+			}
+		}
+
+		private string MakeReaderTagKey(string group, string value)
+		{
+			return (group ?? string.Empty).Trim().ToLowerInvariant() + ":" + (value ?? string.Empty).Trim();
+		}
+
+		private void UpdateReaderTagMatches()
+		{
+			if (readerPagesTagMatchesView == null || readerPagesTagMatchesTitle == null)
+			{
+				return;
+			}
+			UpdateReaderTagMatchesPanelExpanded();
+			readerPagesTagMatchesView.BeginUpdate();
+			readerPagesTagMatchesView.Items.Clear();
+			try
+			{
+				if (readerPagesSelectedTags.Count == 0)
+				{
+					readerPagesTagMatchesTitle.Text = (readerPagesTagMatchesExpanded ? "[-] " : "[+] ") + "Matching comics";
+					readerPagesTagMatchesView.Items.Add("Select one or more tags above");
+					return;
+				}
+				ComicBook[] matches = Program.Database.Books.Where(ComicMatchesSelectedReaderTags).OrderBy(book => book.Caption).Take(200).ToArray();
+				readerPagesTagMatchesTitle.Text = (readerPagesTagMatchesExpanded ? "[-] " : "[+] ") + string.Format("Matching comics ({0})", matches.Length);
+				foreach (ComicBook book in matches)
+				{
+					ListViewItem item = new ListViewItem(book.Caption)
+					{
+						Tag = book
+					};
+					readerPagesTagMatchesView.Items.Add(item);
+				}
+				if (readerPagesTagMatchesView.Items.Count == 0)
+				{
+					readerPagesTagMatchesView.Items.Add("No matching comics");
+				}
+			}
+			finally
+			{
+				readerPagesTagMatchesView.EndUpdate();
+			}
+		}
+
+		private bool ComicMatchesSelectedReaderTags(ComicBook comic)
+		{
+			HashSet<string> comicTags = new HashSet<string>(GetReaderTagGroups(comic).SelectMany(group => group.Value.Select(tag => MakeReaderTagKey(group.Key, tag))), StringComparer.OrdinalIgnoreCase);
+			return readerPagesSelectedTags.All(comicTags.Contains);
+		}
+
+		private void ReaderPagesTagMatchesView_ItemMouseHover(object sender, ListViewItemMouseHoverEventArgs e)
+		{
+			ShowReaderPagesTagMatchPreview(e.Item);
+		}
+
+		private void ReaderPagesTagMatchesView_MouseMove(object sender, MouseEventArgs e)
+		{
+			ListViewItem item = readerPagesTagMatchesView.GetItemAt(e.X, e.Y);
+			if (item != readerPagesTagMatchesToolTipItem)
+			{
+				HideReaderPagesTagMatchPreview();
+			}
+		}
+
+		private void ReaderPagesTagMatchesView_MouseLeave(object sender, EventArgs e)
+		{
+			HideReaderPagesTagMatchPreview();
+		}
+
+		private void ShowReaderPagesTagMatchPreview(ListViewItem item)
+		{
+			ComicBook comic = item?.Tag as ComicBook;
+			if (comic == null || readerPagesTagMatchesToolTip == null || readerPagesTagMatchesView == null)
+			{
+				return;
+			}
+			readerPagesTagMatchesToolTipItem = item;
+			readerPagesTagMatchesToolTipBook = comic;
+			Point point = readerPagesTagMatchesView.PointToClient(Cursor.Position);
+			point.Offset(FormUtility.ScaleDpiX(18), FormUtility.ScaleDpiY(18));
+			readerPagesTagMatchesToolTip.Show(comic.Caption, readerPagesTagMatchesView, point, 15000);
+		}
+
+		private void HideReaderPagesTagMatchPreview()
+		{
+			if (readerPagesTagMatchesToolTip != null && readerPagesTagMatchesView != null)
+			{
+				readerPagesTagMatchesToolTip.Hide(readerPagesTagMatchesView);
+			}
+			readerPagesTagMatchesToolTipBook = null;
+			readerPagesTagMatchesToolTipItem = null;
+		}
+
+		private void ReaderPagesTagMatchesToolTip_Popup(object sender, PopupEventArgs e)
+		{
+			e.ToolTipSize = new Size(FormUtility.ScaleDpiX(190), FormUtility.ScaleDpiY(260));
+		}
+
+		private Rectangle GetReaderPagesCoverPreviewBounds(Size imageSize, Rectangle bounds)
+		{
+			if (imageSize.Width <= 0 || imageSize.Height <= 0 || bounds.Width <= 0 || bounds.Height <= 0)
+			{
+				return Rectangle.Empty;
+			}
+			float scale = Math.Min((float)bounds.Width / imageSize.Width, (float)bounds.Height / imageSize.Height);
+			Size size = new Size(Math.Max(1, (int)(imageSize.Width * scale)), Math.Max(1, (int)(imageSize.Height * scale)));
+			return new Rectangle(bounds.X + (bounds.Width - size.Width) / 2, bounds.Y + (bounds.Height - size.Height) / 2, size.Width, size.Height);
+		}
+
+		private void ReaderPagesTagMatchesToolTip_Draw(object sender, DrawToolTipEventArgs e)
+		{
+			e.Graphics.FillRectangle(SystemBrushes.Info, e.Bounds);
+			e.Graphics.DrawRectangle(SystemPens.InfoText, new Rectangle(e.Bounds.X, e.Bounds.Y, e.Bounds.Width - 1, e.Bounds.Height - 1));
+			Rectangle bounds = e.Bounds;
+			bounds.Inflate(-FormUtility.ScaleDpiX(8), -FormUtility.ScaleDpiY(8));
+			ComicBook comic = readerPagesTagMatchesToolTipBook;
+			if (comic == null)
+			{
+				return;
+			}
+			Rectangle titleBounds = new Rectangle(bounds.X, bounds.Y, bounds.Width, FormUtility.ScaleDpiY(36));
+			TextRenderer.DrawText(e.Graphics, comic.Caption, FC.Get("Arial", 8f, FontStyle.Bold), titleBounds, SystemColors.InfoText, TextFormatFlags.EndEllipsis | TextFormatFlags.WordBreak);
+			Rectangle imageBounds = new Rectangle(bounds.X, titleBounds.Bottom + FormUtility.ScaleDpiY(6), bounds.Width, bounds.Height - titleBounds.Height - FormUtility.ScaleDpiY(6));
+			try
+			{
+				using (IItemLock<ThumbnailImage> itemLock = Program.ImagePool.GetThumbnail(comic.GetFrontCoverThumbnailKey(), comic))
+				{
+					Image image = itemLock?.Item?.Bitmap;
+					if (image != null)
+					{
+						Rectangle drawBounds = GetReaderPagesCoverPreviewBounds(image.Size, imageBounds);
+						e.Graphics.DrawImage(image, drawBounds);
+						return;
+					}
+				}
+			}
+			catch
+			{
+			}
+			TextRenderer.DrawText(e.Graphics, "Cover preview unavailable", e.Font, imageBounds, SystemColors.GrayText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak);
+		}
+
+		private void ReaderPagesTagMatchesView_Activate(object sender, EventArgs e)
+		{
+			ComicBook comic = readerPagesTagMatchesView?.SelectedItems.Cast<ListViewItem>().Select(item => item.Tag as ComicBook).FirstOrDefault(book => book != null);
+			if (comic != null)
+			{
+				OpenBooks.Open(comic, inNewSlot: false);
+			}
+		}
+
+		private void ReaderPagesTagInput_GotFocus(object sender, EventArgs e)
+		{
+			if (readerPagesTagInput.ForeColor == SystemColors.GrayText)
+			{
+				readerPagesTagInput.Text = string.Empty;
+				readerPagesTagInput.ForeColor = SystemColors.WindowText;
+			}
+		}
+
+		private void ReaderPagesTagInput_LostFocus(object sender, EventArgs e)
+		{
+			if (string.IsNullOrWhiteSpace(readerPagesTagInput.Text))
+			{
+				readerPagesTagInput.Text = "Enter new tags, separated with comma";
+				readerPagesTagInput.ForeColor = SystemColors.GrayText;
+			}
+		}
+
+		private void ReaderPagesTagInput_KeyDown(object sender, KeyEventArgs e)
+		{
+			if (e.KeyCode == Keys.Enter)
+			{
+				AddReaderPagesTagsFromInput();
+				e.SuppressKeyPress = true;
+			}
+		}
+
+		private void ReaderPagesTagAddButton_Click(object sender, EventArgs e)
+		{
+			AddReaderPagesTagsFromInput();
+		}
+
+		private void AddReaderPagesTagsFromInput()
+		{
+			ComicBook comic = comicDisplay?.Book?.Comic;
+			if (comic == null || readerPagesTagInput.ForeColor == SystemColors.GrayText)
+			{
+				return;
+			}
+			List<string> existing = (comic.Tags ?? string.Empty).Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(tag => tag.Trim()).Where(tag => tag.Length != 0).ToList();
+			foreach (string tag in readerPagesTagInput.Text.Split(new char[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Select(tag => tag.Trim()).Where(tag => tag.Length != 0))
+			{
+				if (!existing.Contains(tag, StringComparer.OrdinalIgnoreCase))
+				{
+					existing.Add(tag);
+				}
+			}
+			comic.Tags = existing.ToListString(", ");
+			readerPagesTagInput.Text = string.Empty;
+			ReaderPagesTagInput_LostFocus(readerPagesTagInput, EventArgs.Empty);
 		}
 
 		private void ToggleReaderPagesPane()
@@ -568,6 +1262,7 @@ namespace cYo.Projects.ComicRack.Viewer
 			{
 				readerPagesView.PageFilter = ComicPageType.All;
 				readerPagesView.Book = Program.Settings.ReaderPagesPaneVisible ? comicDisplay.Book : null;
+				UpdateReaderPagesTagPanel();
 			}
 		}
 

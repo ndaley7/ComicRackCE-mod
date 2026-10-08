@@ -2,7 +2,23 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "ComicRack Debug",
+      "name": "ComicRack Debug (run)",
+      "type": "node-terminal",
+      "request": "launch",
+      "preLaunchTask": "build debug",
+      "command": "& \"${workspaceFolder}\\ComicRack\\bin\\Debug\\net48\\ComicRack.exe\"",
+      "cwd": "${workspaceFolder}\\ComicRack\\bin\\Debug\\net48"
+    },
+    {
+      "name": "ComicRack Release (run)",
+      "type": "node-terminal",
+      "request": "launch",
+      "preLaunchTask": "build release",
+      "command": "& \"${workspaceFolder}\\ComicRack\\bin\\Release\\net48\\ComicRack.exe\"",
+      "cwd": "${workspaceFolder}\\ComicRack\\bin\\Release\\net48"
+    },
+    {
+      "name": "ComicRack Debug (clr debugger)",
       "type": "clr",
       "request": "launch",
       "preLaunchTask": "build debug",
@@ -11,7 +27,7 @@
       "console": "internalConsole"
     },
     {
-      "name": "ComicRack Release",
+      "name": "ComicRack Release (clr debugger)",
       "type": "clr",
       "request": "launch",
       "preLaunchTask": "build release",
