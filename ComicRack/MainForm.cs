@@ -410,6 +410,8 @@ namespace cYo.Projects.ComicRack.Viewer
 
 		private PagesView readerPagesView;
 
+		private Panel readerPagesPanel;
+
 		private Panel readerPagesTagsPanel;
 
 		private FlowLayoutPanel readerPagesTagsFlow;
@@ -529,19 +531,20 @@ namespace cYo.Projects.ComicRack.Viewer
 			readerPagesSplitContainer.Size = readerContainer.ClientSize;
 			readerPagesSplitContainer.Panel1MinSize = FormUtility.ScaleDpiX(160);
 			readerPagesSplitContainer.Panel2MinSize = FormUtility.ScaleDpiX(200);
-			Panel pagesPanel = new Panel
+			readerPagesPanel = new Panel
 			{
 				Dock = DockStyle.Fill
 			};
-			pagesPanel.SizeChanged += ReaderPagesPanel_SizeChanged;
-			pagesPanel.Controls.Add(readerPagesView);
-			pagesPanel.Controls.Add(CreateReaderPagesTagsPanel());
-			readerPagesSplitContainer.Panel1.Controls.Add(pagesPanel);
+			readerPagesPanel.SizeChanged += ReaderPagesPanel_SizeChanged;
+			readerPagesPanel.Controls.Add(readerPagesView);
+			readerPagesPanel.Controls.Add(CreateReaderPagesTagsPanel());
+			readerPagesSplitContainer.Panel1.Controls.Add(readerPagesPanel);
 			readerPagesSplitContainer.Panel2.Controls.Add(pageDisplay);
 			readerPagesSplitContainer.SplitterMoved += ReaderPagesSplitContainer_SplitterMoved;
 			readerContainer.Controls.Add(readerPagesSplitContainer);
 			readerContainer.Controls.SetChildIndex(readerPagesSplitContainer, 0);
 			readerContainer.Controls.SetChildIndex(quickOpenView, 0);
+			readerPagesView.Visible = true;
 			readerPagesSplitContainer.Panel1Collapsed = !Program.Settings.ReaderPagesPaneVisible;
 			SetReaderPagesPaneWidth(Program.Settings.ReaderPagesPaneWidth);
 		}
@@ -736,7 +739,7 @@ namespace cYo.Projects.ComicRack.Viewer
 				return;
 			}
 			UpdateReaderPagesTagsPanelHeight();
-			ComicBook comic = Program.Settings.ReaderPagesPaneVisible ? comicDisplay?.Book?.Comic : null;
+			ComicBook comic = comicDisplay?.Book?.Comic;
 			AttachReaderPagesTagsBook(comic);
 			readerPagesTagsFlow.SuspendLayout();
 			readerPagesTagsFlow.Controls.Clear();
@@ -983,26 +986,7 @@ namespace cYo.Projects.ComicRack.Viewer
 
 		private Color GetReaderTagColor(string group)
 		{
-			switch ((group ?? string.Empty).ToLowerInvariant())
-			{
-			case "artist":
-				return Color.FromArgb(255, 246, 199);
-			case "group":
-			case "male":
-				return Color.FromArgb(222, 239, 255);
-			case "parody":
-			case "language":
-			case "tags":
-				return Color.FromArgb(232, 255, 236);
-			case "character":
-				return Color.FromArgb(248, 216, 255);
-			case "female":
-				return Color.FromArgb(255, 226, 237);
-			case "genre":
-				return Color.FromArgb(239, 247, 252);
-			default:
-				return Color.FromArgb(238, 238, 238);
-			}
+			return ComicTagUtility.GetColor(group);
 		}
 
 		private string MakeReaderTagKey(string group, string value)
@@ -5405,3 +5389,4 @@ namespace cYo.Projects.ComicRack.Viewer
 		}
 	}
 }
+

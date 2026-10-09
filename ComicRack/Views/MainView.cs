@@ -39,6 +39,8 @@ namespace cYo.Projects.ComicRack.Viewer.Views
 
 		private ComicPagesView pagesView;
 
+		private ComicTagsView tagsView;
+
 		private readonly TabBar.TabBarItem tsbLibrary = new TabBar.TabBarItem("Library")
 		{
 			Name = "tsbLibrary",
@@ -51,6 +53,14 @@ namespace cYo.Projects.ComicRack.Viewer.Views
 		{
 			Name = "tsbFolders",
 			Image = Resources.FileBrowser,
+			Padding = new Padding(0, 0, 8, 0),
+			AdjustWidth = false
+		};
+
+		private readonly TabBar.TabBarItem tsbTags = new TabBar.TabBarItem("Tags")
+		{
+			Name = "tsbTags",
+			Image = Resources.Search,
 			Padding = new Padding(0, 0, 8, 0),
 			AdjustWidth = false
 		};
@@ -151,15 +161,17 @@ namespace cYo.Projects.ComicRack.Viewer.Views
 		{
 			components = new Container();
 			InitializeComponent();
-			tabStrip.Items.AddRange(new TabBar.TabBarItem[3]
+			tabStrip.Items.AddRange(new TabBar.TabBarItem[4]
 			{
 				tsbLibrary,
 				tsbFolders,
+				tsbTags,
 				tsbPages
 			});
 			tabStripVisibility = new VisibilityAnimator(components, tabStrip);
 			tsbLibrary.CaptionClick += tab_CaptionClick;
 			tsbFolders.CaptionClick += tab_CaptionClick;
+			tsbTags.CaptionClick += tab_CaptionClick;
 			tsbPages.CaptionClick += tab_CaptionClick;
 			LocalizeUtility.Localize(this, components);
 		}
@@ -188,6 +200,8 @@ namespace cYo.Projects.ComicRack.Viewer.Views
 				{
 					fileView = AddExplorerView(null, new ComicListFolderFilesBrowser(Program.Settings.FavoriteFolders), tsbFolders);
 				}
+				tagsView = new ComicTagsView();
+				AddView(tagsView, tsbTags);
 				pagesView = new ComicPagesView();
 				AddView(pagesView, tsbPages);
 				dbView.ComicBrowser.ItemView.UpdateItems();
@@ -234,6 +248,11 @@ namespace cYo.Projects.ComicRack.Viewer.Views
 		public void ShowFolders()
 		{
 			ShowView(tsbFolders);
+		}
+
+		public void ShowTags()
+		{
+			ShowView(tsbTags);
 		}
 
 		public void ShowPages()
@@ -826,3 +845,4 @@ namespace cYo.Projects.ComicRack.Viewer.Views
 		}
 	}
 }
+

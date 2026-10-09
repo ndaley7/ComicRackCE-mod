@@ -1,5 +1,7 @@
 # Define the path to Inno Setup 6
 $innoSetupPath = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+$compiledExecutable = ".\ComicRack\bin\Release\net48\ComicRack.exe"
+$installedExecutable = "C:\Program Files\ComicRack Community Edition\ComicRack.exe"
 
 # Check if Inno Setup is installed
 if (!(Test-Path $innoSetupPath)) {
@@ -54,3 +56,22 @@ try {
     exit 1
 }
 
+if (!(Test-Path $compiledExecutable)) {
+    Write-Error "The compiled executable does not exist: $compiledExecutable"
+    exit 1
+}
+
+$installDirectory = Split-Path -Path $installedExecutable -Parent
+if (!(Test-Path $installDirectory)) {
+    Write-Error "The ComicRack Community Edition install directory does not exist: $installDirectory"
+    exit 1
+}
+
+try {
+    Write-Output "Replacing installed executable: $installedExecutable"
+    Copy-Item -Path $compiledExecutable -Destination $installedExecutable -Force
+    Write-Output "Installed executable replaced successfully."
+} catch {
+    Write-Error "Failed to replace the installed executable. Run this script as Administrator if access is denied. Error: $_"
+    exit 1
+}
