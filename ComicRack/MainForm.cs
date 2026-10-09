@@ -368,6 +368,8 @@ namespace cYo.Projects.ComicRack.Viewer
 
 		private static readonly string DeviceSyncingErrors = TR.Load(typeof(MainForm).Name)["DeviceSyncingErrors", "{0} errors. Click for details"];
 
+		private const string MasterUiScriptPath = @"E:\GIT\_CODEX\ComicRack-Util\master_ui.py";
+
 		private static readonly Image exportErrorAnimation = Resources.ExportAnimationWithError;
 
 		private static readonly Image exportAnimation = Resources.ExportAnimation;
@@ -2107,6 +2109,7 @@ namespace cYo.Projects.ComicRack.Viewer
 			{
 				ShowPendingTasks();
 			}, miTasks);
+			commands.Add(LaunchMasterUI, miMasterUI);
 			commands.Add(MenuRestart, miRestart);
 			commands.Add(MenuClose, miExit, cmNotifyExit, tbExit);
 			commands.Add(OpenRemoteLibrary, miOpenRemoteLibrary, tbOpenRemoteLibrary);
@@ -2717,6 +2720,46 @@ namespace cYo.Projects.ComicRack.Viewer
 			Close();
 		}
 
+		private void LaunchMasterUI()
+		{
+			if (!File.Exists(MasterUiScriptPath))
+			{
+				MessageBox.Show(this, "Could not find:\n\n" + MasterUiScriptPath, "Master UI", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				return;
+			}
+
+			try
+			{
+				StartMasterUI("py.exe", "-3 " + QuoteProcessArgument(MasterUiScriptPath));
+			}
+			catch
+			{
+				try
+				{
+					StartMasterUI("python.exe", QuoteProcessArgument(MasterUiScriptPath));
+				}
+				catch (Exception ex)
+				{
+					MessageBox.Show(this, "Could not launch Master UI with Python 3.\n\n" + ex.Message, "Master UI", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				}
+			}
+		}
+
+		private static void StartMasterUI(string executable, string arguments)
+		{
+			Process.Start(new ProcessStartInfo
+			{
+				FileName = executable,
+				Arguments = arguments,
+				WorkingDirectory = Path.GetDirectoryName(MasterUiScriptPath),
+				UseShellExecute = true
+			});
+		}
+
+		private static string QuoteProcessArgument(string value)
+		{
+			return "\"" + value.Replace("\"", "\\\"") + "\"";
+		}
 		public void MenuRestart()
 		{
 			Program.Restart = true;

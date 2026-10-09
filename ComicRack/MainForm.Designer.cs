@@ -72,6 +72,7 @@ namespace cYo.Projects.ComicRack.Viewer
 			this.miCacheThumbnails = new System.Windows.Forms.ToolStripMenuItem();
 			this.miTasks = new System.Windows.Forms.ToolStripMenuItem();
 			this.miFileAutomation = new System.Windows.Forms.ToolStripMenuItem();
+			this.miMasterUI = new System.Windows.Forms.ToolStripMenuItem();
 			this.toolStripMenuItem57 = new System.Windows.Forms.ToolStripSeparator();
 			this.miNewComic = new System.Windows.Forms.ToolStripMenuItem();
 			this.toolStripMenuItem42 = new System.Windows.Forms.ToolStripSeparator();
@@ -463,6 +464,7 @@ namespace cYo.Projects.ComicRack.Viewer
             this.miSynchronizeDevices,
             this.miTasks,
             this.miFileAutomation,
+            this.miMasterUI,
             this.toolStripMenuItem57,
             this.miNewComic,
             this.toolStripMenuItem42,
@@ -585,7 +587,15 @@ namespace cYo.Projects.ComicRack.Viewer
 			this.miFileAutomation.Name = "miFileAutomation";
 			this.miFileAutomation.Size = new System.Drawing.Size(280, 22);
 			this.miFileAutomation.Text = "A&utomation";
+			//
+			// miMasterUI
 			// 
+			this.miMasterUI.Name = "miMasterUI";
+			this.miMasterUI.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift)
+            | System.Windows.Forms.Keys.M)));
+			this.miMasterUI.Size = new System.Drawing.Size(280, 22);
+			this.miMasterUI.Text = "Master UI";
+			//
 			// toolStripMenuItem57
 			// 
 			this.toolStripMenuItem57.Name = "toolStripMenuItem57";
@@ -3574,6 +3584,7 @@ namespace cYo.Projects.ComicRack.Viewer
 		private ToolStripMenuItem miMagnify;
 		private ToolStripMenuItem cmMagnify;
 		private ToolStripMenuItem miFileAutomation;
+		private ToolStripMenuItem miMasterUI;
 		private ToolStripSeparator toolStripMenuItem40;
 		private ToolStripMenuItem miViewRefresh;
 		private ToolStripMenuItem browseMenu;
